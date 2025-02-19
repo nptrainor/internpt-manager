@@ -1,5 +1,6 @@
 # internpt-manager
 A PHP Script for Linux which mounts an Internxt Drive to your filesystem using Rclone, Systemd, and Internxt CLI.
+
 This is a personal project and is in no way connected to or endorsed by Internxt.
 
 What I needed:
@@ -30,30 +31,50 @@ Install
 9) The credentials file gives the script all the information it needs. This is what it should look like (amend as necessary):
 
 {
+
         "username":"jess",
+        
         "uid":"1000",
+        
         "gid":"1000",
+        
         "mountpoint":"/home/jess/Internxt",
         "internxt_email":"jess@example.com",
-        "internxt_password":"my excellent password by jess"
-        "internpt_log":"/var/log/internpt-manager/jess-combined.log"
+        
+        "internxt_password":"my excellent password by jess",
+        
+        "internpt_log":"/var/log/internpt-manager/jess-combined.log",
+        
         "rclone_remote":"Internxt",
+        
         "rclone_log":"/var/log/rclone/jess-internpt.log",
+        
         "rclone_config":"/home/jess/.config/rclone/rclone.conf"
+        
 }
 
 Where:
 
 a) username - the username of the owner and user of the Internxt Drive directory
+
 b) uid - the user ID used for the mount point directory and its associated contents (for example, Jess' UID in /etc/passwd is 1000)
+
 c) gid - the group Id used for the mount point directory and its associated contents (for example, Jess' GID in /etc/group is 1000)
+
 d) mountpoint - the place where the Internxt Drive is to be mounted. To avoid conflicting with the official Internxt apps do NOT use "~/Internxt Drive".
+
 e) internxt_email - the email address associated with your Internxt Account
+
 f) internxt_password - the password associated with your Internxt Account
+
 g) internpt_log - the directory and log file to be used where messages from the /usr/local/bin/internpt-manager.php script are to be recorded - NOTE: best practice would suggest a per user log file. Created automatically on install.
-h) rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server which Jess has already set up
+
+h) rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server which Jess has already set up.
+
 i) rclone_log - the directory and log file to be used where messages from rclone for the above remote are to be recorded - NOTE: best practice would suggest a per user log file. Created by rclone
+
 j) rclone_config - the rclone directory and config file setting out the details of the remote 
+
 
  Install (continued)
 
@@ -65,6 +86,7 @@ j) rclone_config - the rclone directory and config file setting out the details 
  15) You can then send and receive files directly through rsync or whatever is your preferred file mover of choice.
 
 Management
+
 After the initial install procedure, you can control the internpt-manager processes with the following commands:
 
 internpt-manager [command]
@@ -72,28 +94,45 @@ internpt-manager [command]
 where command is one of:
 
 install - We've just done that!
+
 uninstall - removes all the files used by the internpt-manager
+
 stop - stops the rclone mount by stopping the systemd unit. Unmounts the Internxt Drive folder (eg. for Jess, it unmounts: /home/jess/Internxt)
+
 restart - stop and then start
+
 status - relates the status of the systemd rclone mount. One of: Status: Service is NOT active because it is NOT installed / Status: Service is active / Status: Service is stopped / Status: Service Status unavailable
+
 remote_status - relates the status of the systemd rclone mount as a single digit. Inactive: 0; Active: 1; Stopped: 2; Unavailable: 3
+
 credentials - prints help on setting up the credentials file (as above)
+
 webdav_status - returns status of Internxt WebDav service on your device true (online) / false (offline) / -1 (unavailable) 
+
 check - checks whether the rclone mount is running but the webdav service is offline/unavailable (it has happened!) - restarts Internxt WebDav service on your device
+
 help - prints a great big screen of help
+
 getTerminalWidth - internal use only
+
      
 
 Requirements:
-PHP v7+ -you more than likely can get away with a lower version, but why would you?
-Posix for PHP - I install the "php-process" module and this sorted it out
-Rclone
-Internxt CLI
+
+1)PHP v7+ -you more than likely can get away with a lower version, but why would you?
+2) Posix for PHP - I install the "php-process" module and this sorted it out
+3) Rclone
+4) Internxt CLI
+5) a linux distro using Systemd
 
 Gotchas:
+
 I have noticed that sometimes the Internxt WebDav service seems to time out. This leads to the Internxt Drive not working.
+
 I have setup a cron for root as follows which uses the 'check' command above to sort this out.
+
 */4 * * * * /usr/local/bin/internpt-manager check
-There may be others, we'll see.
+
+There may be others, we'll see. If you find any, get in touch, and I will see how I can remediate or mitigate them.
 
 Please feel free to post any issues you find.
