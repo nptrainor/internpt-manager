@@ -137,4 +137,9 @@ I have setup a cron for root as follows which uses the 'check' command above to 
 
 There may be others, we'll see. If you find any, get in touch, and I will see how I can remediate or mitigate them.
 
+
+Finally:
+
+Why 'internpt-manager'? Well, I couldn't rightly use the company name, so given I'm NPT, that'll do.
+
 Please feel free to post any issues you find.
