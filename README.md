@@ -1,4 +1,4 @@
-# internxt-manager
+# internpt-manager
 A PHP Script for Linux which mounts an Internxt Drive to your filesystem using Rclone, Systemd, and Internxt CLI.
 This is a personal project and is in no way connected to or endorsed by Internxt.
 
