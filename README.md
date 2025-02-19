@@ -13,7 +13,7 @@ I wanted a script that would:
 2) be easily controllable
 3) be easily scriptable
 4) work with Wayland or X11
-5) give me smooth access my Internxt Drive.
+5) give me smooth access to my Internxt Drive.
 
 This script allows me, and hopefully you, to do this.
 
