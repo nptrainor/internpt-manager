@@ -3,7 +3,12 @@ A PHP Script for Linux which mounts an Internxt Drive to your filesystem using R
 
 This is a personal project and is in no way connected to or endorsed by Internxt.
 
+
+
 What I needed:
+
+
+
 I needed a simple script to connect my Internxt Drive to my linux computer.
 
 Those apps provided by the company at the time did not fit completely with my requirements.
@@ -18,6 +23,8 @@ I wanted a script that would:
 
 This script allows me, and hopefully you, to do this.
 
+
+
 Install
 
 1) Install the Internxt CLI on to your computer by following these instructions (https://help.internxt.com/en/articles/9720556-how-to-install-the-internxt-cli). You need to do this as root.
@@ -30,28 +37,18 @@ Install
 8) Create the following directory and file: /root/.internpt/credentials.json
 9) The credentials file gives the script all the information it needs. This is what it should look like (amend as necessary):
 
-{
-
-        "username":"jess",
-        
-        "uid":"1000",
-        
+        {
+        "username":"jess",       
+        "uid":"1000",        
         "gid":"1000",
-        
         "mountpoint":"/home/jess/Internxt",
         "internxt_email":"jess@example.com",
-        
         "internxt_password":"my excellent password by jess",
-        
         "internpt_log":"/var/log/internpt-manager/jess-combined.log",
-        
         "rclone_remote":"Internxt",
-        
         "rclone_log":"/var/log/rclone/jess-internpt.log",
-        
         "rclone_config":"/home/jess/.config/rclone/rclone.conf"
-        
-}
+        }
 
 Where:
 
@@ -85,7 +82,10 @@ j) rclone_config - the rclone directory and config file setting out the details 
  14) When it says that the Internxt Drive is avaiable, then you will be able access your files. Initially, there may be a few seconds delay (maybe 10 seconds).
  15) You can then send and receive files directly through rsync or whatever is your preferred file mover of choice.
 
-Management
+
+
+Management:
+
 
 After the initial install procedure, you can control the internpt-manager processes with the following commands:
 
@@ -93,37 +93,39 @@ internpt-manager [command]
 
 where command is one of:
 
-install - We've just done that!
+a) install - We've just done that!
 
-uninstall - removes all the files used by the internpt-manager
+b) uninstall - removes all the files used by the internpt-manager
 
-stop - stops the rclone mount by stopping the systemd unit. Unmounts the Internxt Drive folder (eg. for Jess, it unmounts: /home/jess/Internxt)
+c) stop - stops the rclone mount by stopping the systemd unit. Unmounts the Internxt Drive folder (eg. for Jess, it unmounts: /home/jess/Internxt)
 
-restart - stop and then start
+d) restart - stop and then start
 
-status - relates the status of the systemd rclone mount. One of: Status: Service is NOT active because it is NOT installed / Status: Service is active / Status: Service is stopped / Status: Service Status unavailable
+e) status - relates the status of the systemd rclone mount. One of: Status: Service is NOT active because it is NOT installed / Status: Service is active / Status: Service is stopped / Status: Service Status unavailable
 
-remote_status - relates the status of the systemd rclone mount as a single digit. Inactive: 0; Active: 1; Stopped: 2; Unavailable: 3
+f) remote_status - relates the status of the systemd rclone mount as a single digit. Inactive: 0; Active: 1; Stopped: 2; Unavailable: 3
 
-credentials - prints help on setting up the credentials file (as above)
+g) credentials - prints help on setting up the credentials file (as above)
 
-webdav_status - returns status of Internxt WebDav service on your device true (online) / false (offline) / -1 (unavailable) 
+h) webdav_status - returns status of Internxt WebDav service on your device true (online) / false (offline) / -1 (unavailable) 
 
-check - checks whether the rclone mount is running but the webdav service is offline/unavailable (it has happened!) - restarts Internxt WebDav service on your device
+i) check - checks whether the rclone mount is running but the webdav service is offline/unavailable (it has happened!) - restarts Internxt WebDav service on your device
 
-help - prints a great big screen of help
+j) help - prints a great big screen of help
 
-getTerminalWidth - internal use only
+k) getTerminalWidth - internal use only
 
      
 
 Requirements:
 
-1)PHP v7+ -you more than likely can get away with a lower version, but why would you?
+1) PHP v7+ -you more than likely can get away with a lower version, but why would you?
 2) Posix for PHP - I install the "php-process" module and this sorted it out
 3) Rclone
 4) Internxt CLI
-5) a linux distro using Systemd
+5) A Linux distro using Systemd 
+
+
 
 Gotchas:
 
