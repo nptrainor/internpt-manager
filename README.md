@@ -43,16 +43,17 @@ Install
 }
 
 Where:
- username - the username of the owner and user of the Internxt Drive directory
- uid - the user ID used for the mount point directory and its associated contents (for example, Jess' UID in /etc/passwd is 1000)
- gid - the group Id used for the mount point directory and its associated contents (for example, Jess' GID in /etc/group is 1000)
- mountpoint - the place where the Internxt Drive is to be mounted. To avoid conflicting with the official Internxt apps do NOT use "~/Internxt Drive".
- internxt_email - the email address associated with the Internxt Account
- internxt_password - the password associated with the Internxt Account
- internpt_log - the directory and log file to be used where messages from the /usr/local/bin/internpt-manager.php script are to be recorded - NOTE: best practice would suggest a per user log file 
- rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server which Jess has already set up
- rclone_log - the directory and log file to be used where messages from rclone for the above remote are to be recorded - NOTE: best practice would suggest a per user log file 
- rclone_config - the rclone directory and config file setting out the details of the remote 
+
+a) username - the username of the owner and user of the Internxt Drive directory
+b) uid - the user ID used for the mount point directory and its associated contents (for example, Jess' UID in /etc/passwd is 1000)
+c) gid - the group Id used for the mount point directory and its associated contents (for example, Jess' GID in /etc/group is 1000)
+d) mountpoint - the place where the Internxt Drive is to be mounted. To avoid conflicting with the official Internxt apps do NOT use "~/Internxt Drive".
+e) internxt_email - the email address associated with your Internxt Account
+f) internxt_password - the password associated with your Internxt Account
+g) internpt_log - the directory and log file to be used where messages from the /usr/local/bin/internpt-manager.php script are to be recorded - NOTE: best practice would suggest a per user log file. Created automatically on install.
+h) rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server which Jess has already set up
+i) rclone_log - the directory and log file to be used where messages from rclone for the above remote are to be recorded - NOTE: best practice would suggest a per user log file. Created by rclone
+j) rclone_config - the rclone directory and config file setting out the details of the remote 
 
  Install (continued)
 
