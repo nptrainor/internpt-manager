@@ -1,12 +1,12 @@
 # internpt-manager
+v0.9.5
+
 A PHP Script for Linux which mounts an Internxt Drive to your filesystem using Rclone, Systemd, and Internxt CLI.
 
 This is a personal project and is in no way connected to or endorsed by Internxt.
 
 
-
 What I needed:
-
 
 
 I needed a simple script to connect my Internxt Drive to my linux computer.
@@ -42,6 +42,7 @@ Install
         "uid":"1000",        
         "gid":"1000",
         "mountpoint":"/home/jess/Internxt",
+        "status_directory":"/home/jess/.internpt",
         "internxt_email":"jess@example.com",
         "internxt_password":"my excellent password by jess",
         "internpt_log":"/var/log/internpt-manager/jess-combined.log",
@@ -60,17 +61,19 @@ c) gid - the group Id used for the mount point directory and its associated cont
 
 d) mountpoint - the place where the Internxt Drive is to be mounted. To avoid conflicting with the official Internxt apps do NOT use "~/Internxt Drive".
 
-e) internxt_email - the email address associated with your Internxt Account
+e) status directory - where the 'service_status' and 'webdav_status' files are written - you can use the contents of these files for your own purposes
 
-f) internxt_password - the password associated with your Internxt Account
+f) internxt_email - the email address associated with your Internxt Account
 
-g) internpt_log - the directory and log file to be used where messages from the /usr/local/bin/internpt-manager.php script are to be recorded - NOTE: best practice would suggest a per user log file. Created automatically on install.
+g) internxt_password - the password associated with your Internxt Account
 
-h) rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server which Jess has already set up.
+h) internpt_log - the directory and log file to be used where messages from the /usr/local/bin/internpt-manager.php script are to be recorded - NOTE: best practice would suggest a per user log file. Created automatically on install.
 
-i) rclone_log - the directory and log file to be used where messages from rclone for the above remote are to be recorded - NOTE: best practice would suggest a per user log file. Created by rclone
+i) rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server which Jess has already set up.
 
-j) rclone_config - the rclone directory and config file setting out the details of the remote 
+j) rclone_log - the directory and log file to be used where messages from rclone for the above remote are to be recorded - NOTE: best practice would suggest a per user log file. Created by rclone
+
+k) rclone_config - the rclone directory and config file setting out the details of the remote 
 
 
  Install (continued)
@@ -99,7 +102,7 @@ b) uninstall - removes all the files used by the internpt-manager
 
 c) stop - stops the rclone mount by stopping the systemd unit. Unmounts the Internxt Drive folder (eg. for Jess, it unmounts: /home/jess/Internxt)
 
-d) restart - stop and then start
+d) restart - stop and then start the internpt-manager process
 
 e) status - relates the status of the systemd rclone mount. One of: Status: Service is NOT active because it is NOT installed / Status: Service is active / Status: Service is stopped / Status: Service Status unavailable
 
@@ -115,7 +118,6 @@ j) help - prints a great big screen of help
 
 k) getTerminalWidth - internal use only
 
-     
 
 Requirements:
 
@@ -133,7 +135,7 @@ I have noticed that sometimes the Internxt WebDav service seems to time out. Thi
 
 I have setup a cron for root as follows which uses the 'check' command above to sort this out.
 
-*/4 * * * * /usr/local/bin/internpt-manager check
+*/4 * * * * /usr/local/bin/internxt login -e INTERNXT_EMAIL -p 'INTERNXT_PASSWORD' && /usr/local/bin/internxt webdav enable && /usr/local/bin/internpt-manager check
 
 There may be others, we'll see. If you find any, get in touch, and I will see how I can remediate or mitigate them.
 
