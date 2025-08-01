@@ -1,14 +1,10 @@
 #!/usr/bin/env php
 <?php
 /**
-* 2025 02 19
-* v0.6
+* 2025 06 26
+* v0.9.51
 * Requirements:
 * 
-* check for presence of rclone
-* create doCredentials - list what should be put in the credentials file
-* set out the params and returns
-**
 * MIT License
 
 Copyright (c) 2025 N P Trainor
@@ -93,37 +89,12 @@ function finaltext($text) {
 	}
 	echo ESC.ANSI_BOLD.ANSI_GREEN.$stars.PHP_EOL.'* '.$text.' *'.PHP_EOL.$stars.ANSI_CLOSE.PHP_EOL; }
 
-function printstars() { 
-	/** print stars onto terminal - for the width of the terminal
-	 * @return a line of *
-		* **/
 
-/* discover the tty number for this process */
-	$exec = '/usr/bin/tty';
-	exec($exec,$output,$result_code);
 
-	if($result_code == 0)
-	{
-		// work out the width of the output
-		$tty = implode($output);
-		$exec = 'echo $(stty -a < "'.$tty.'" | grep -Po ';
-		$exec .= "'(?<=columns )\d+')";
-	}
 
-	exec($exec,$output,$result_code);
 
-	if($output[0] == $tty)
-	{
-		$width = $output[1];
 
-		$stars = '';
-			for($x = 0; $x < $width; $x++){
-				$stars .= STAR;
-			}
-		echo PHP_EOL.$stars.PHP_EOL;
-	}
 
-}
 
 
 
@@ -131,7 +102,7 @@ function preFlight($command)
 {
 
 	/** check whether the escaped command is available to execute, else print help and die  **/	
-$cmd_array = array("install","start","stop","uninstall","status","remote_status","credentials","getTerminalWidth","webdav_status","check","help","restart");	
+$cmd_array = array("install","start","stop","uninstall","status","remote_status","clear_cache","force_stop","credentials","getTerminalWidth","webdav_status","check","help","restart");	
 
 if( (!in_array($command,$cmd_array,'strict'))) {
 
@@ -150,8 +121,8 @@ die();
  */
 
 
-/* check correct permissions and ownership */
-if(fileowner(__FILE__) != 0 || filegroup(__FILE__) != 0)
+/* check correct permissions and ownership
+if(fileowner(__FILE__) != 1000 || filegroup(__FILE__) != 0)
 {
         error('Oh dear! This file should be owned by root alone');
 info('Please change ownership via the following command as root:'); 
@@ -162,7 +133,7 @@ die();
 }
 
 
-if( substr(sprintf("%o",fileperms(__FILE__)),-4) != '0700' )
+if( substr(sprintf("%o",fileperms(__FILE__)),-4) != '0770' )
 {
         error('Oh dear! This file should have strict permissions');
 info('Please change permissions via the following command as root: $ chmod -f 0700 '.__FILE__);
@@ -170,6 +141,7 @@ info('After you have done this, run '.__FILE__.' '.$command.' again');
 die();
 }
 
+	* */
 
     $phpversion_array = explode('.', phpversion());
     if ((int)$phpversion_array[0].$phpversion_array[1] < 56) {
@@ -208,11 +180,12 @@ info('After you have corrected this, run '.__FILE__.' '.$command.' again');
 		info('After you have done this, run '.__FILE__.' '.$command.' again');
 	die();
     }
-
+/*
+    /root/.internpt/start.json - where the initial information is found
+ */
 $c_json = (posix_getpwuid(posix_getuid())['dir'].'/.internpt/credentials.json');
+
 if(!file_exists($c_json) || !is_readable($c_json)) {
-
-
 	if($command == 'install')
 	{
 //	InternxtConnection::doCredentials();
@@ -223,6 +196,7 @@ $c= '
         "uid":"1000",
         "gid":"1000",
         "mountpoint":"/home/xxxxxxxxxxxx/Internxt",
+        "status_directory":"/home/xxxxxxxxxxxx/.internpt",
         "internxt_email":"xxxxxxxxxxxx@example.com",
         "internxt_password":"my excellent password by xxxxxxxxxxxx"
         "internpt_log":"/var/log/internpt-manager/xxxxxxxxxxxx-combined.log"
@@ -292,35 +266,59 @@ switch($command)
 {
 
 	case "install":
+		$internpt->doWriteLog("** Install Called **".PHP_EOL);
 		$internpt->doInit();
 	break;
 
 	case "start":
+		$internpt->doWriteLog("** Start Called **".PHP_EOL);
+		    info("Internpt Manager Start Requested");
 		$internpt->startWebDav();
 		$internpt->startService();
+                finaltext('Internpt Service Started ✓');
 	break;
 
 	case "stop":
 		$internpt->doStop();
 	break;
 
-	case "restart":
+	case "force_stop":
+		$internpt->doWriteLog("** Force Stop Called **".PHP_EOL);
+		info("Internpt Manager Force Stop Requested");
 		$internpt->doStop();
-		$internpt->startWebDav();
-		$internpt->startService();
+		$internpt->doClearCache();
+		$internpt->doResetFolder();
+                finaltext('Internpt Force Stop Activated ✓');
+	break;
+
+	case "clear_cache":
+		$internpt->doWriteLog("** Clear Cache Called **".PHP_EOL);
+		$internpt->stopService();
+		$internpt->doUnmount();
+		$internpt->doClearCache();
+//		$internpt->startWebDav();
+//		$internpt->startService();
+	break;
+
+	case "restart":
+		$internpt->doWriteLog("** Restart Called **".PHP_EOL);
+		$internpt->doRestart();
 	break;
 
 
 
 	case "status":
-		$internpt->doStatus();
+		$internpt->doWriteLog("** Service Status Called **".PHP_EOL);
+		$internpt->getStatus();
 	break;
 
 	case "remote_status":
-		$internpt->getRemoteStatus();
+		$internpt->doWriteLog("** Remote Status Called **".PHP_EOL);
+		$internpt->getRemoteStatus(true);
 	break;
 
 	case "credentials":
+		$internpt->doWriteLog("** doCredentials Called **".PHP_EOL);
 		$internpt->doCredentials();
 	break;
 
@@ -329,10 +327,13 @@ switch($command)
 	break;
 
 	case "webdav_status":
-		$internpt->getWebDavStatus();
+		$internpt->doWriteLog("** WebDav Status Called **".PHP_EOL);
+		$internpt->getWebDavStatus(true);
 	break;
 
 	case "check":
+		$internpt->doWriteLog("** Check Called **".PHP_EOL);
+		$internpt->doLogin();
 		$internpt->doCheck();
 	break;
 
@@ -368,6 +369,7 @@ class InternxtConnection{
 	private readonly string $internxt_email;
 	private readonly string $internxt_password;
 	private readonly string $mountpoint;
+	private readonly string $status_directory;
 	private readonly string $internpt_log;
 	private readonly string $rclone_log;
 	private readonly string $rclone_config;
@@ -375,6 +377,7 @@ class InternxtConnection{
 	private readonly string $credentials_file;
 	private readonly string $service_file;
 	private readonly string $service;
+	private readonly string $tty;
 	private readonly string $unit;
 
 	public function __construct($credentials_file,$action = 'install')
@@ -385,6 +388,7 @@ class InternxtConnection{
 		$this->uid = $this->credentials['uid'];
 		$this->guid = $this->credentials['guid'];
 		$this->mountpoint = $this->credentials['mountpoint'];
+		$this->status_directory = $this->credentials['status_directory'];
 		$this->internxt_email = $this->credentials['internxt_email'];
 		$this->internxt_password = $this->credentials['internxt_password'];
 		$this->rclone_log = $this->credentials['rclone_log'];
@@ -402,28 +406,128 @@ class InternxtConnection{
 		info("Initialising Internpt Service Manager");
 		$this->doUnmount();
 		$this->doLogin();
+		$this->createStatusDirectory();
 		$this->startWebDav();
 		$this->createServiceFile();
 		$this->enableServiceFile();
 		$this->doDaemonReload();
 		$this->startService();
+		$this->createWebDavStatusFile(1); $this->createStatusFile(1);
 	}
+
+
+public function createStatusDirectory() {
+	/* create directory where status files are held
+	 * created at install / update
+	 * @returns void
+	 */
+	if(!is_dir($this->status_directory))
+	{
+		exec("/usr/bin/mkdir ".$this->status_directory);
+		exec('/usr/bin/chown -Rf '.$this->uid.':'.$this->guid.' '.$this->status_directory);
+		exec("/usr/bin/chmod -Rf 700 ".$this->status_directory);
+	}
+
+}
+
+
+public function doRestart() {
+/*
+ *	do restart upon failure
+ *@returns void
+ */
+		$this->doUnmount();
+		$this->stopWebDav();
+		$this->stopService();
+		$this->startWebDav();
+		$this->startService();
+}
+
+public function doMountCheck() {
+    /* checks whether mountpoint is successfully mounted 
+     * @returns bool
+        * */
+	$result = 1;
+			$this->doWriteLog("doCheckMount Called");
+
+			$exec= "/usr/bin/cat /proc/mounts | grep ".$this->mountpoint." | wc -l"; 
+
+			$count = 0;
+			while( exec($exec,$mo,$mr) ) {
+				if(implode($mo) > 2) break;
+			}
+			$this->doWriteLog("Number of Drive Files: ".implode($mo));
+
+
+
+	
+				
+			$exec = "ls -1 ".$this->mountpoint." | wc -l; echo ".R;
+			while( $dir = scandir($this->mountpoint)) {
+
+				if(count($dir)>2){
+					$result = 1;	
+					break;
+				}
+			$this->doWriteLog("$count Checking for Live Mount Point..");
+            $count++;
+if($count == 20000) break;
+			}
+
+			if($result == 1)
+			{
+			success("Internxt Drive is Mounted ✓");
+			}else{
+			error("Internxt Drive NOT mounted");
+			error("Doing Restart");
+			$this->doRestart();
+			}
+		
+            return $result;
+
+
+}
+
 
 public function doCheck() {
 /*
 *	Checks whether when the Systemd Service is online that the webdav service is also running
+*	*********************** Needs to be changed so that it checks the status file - it can then tell what to do... if the webdav service is not running, the then whole shebang should be restart (ie. stop and then start)
  */
-		//	 $this->doWriteLog("Checking whether both Internpt Service and Webdav Server are running");
-	if($this->getRemoteStatus()) {
-	//	$this->doWriteLog("Check Internpt Service Manager running".$this->getWebDavStatus());
-		if(false === $this->getWebDavStatus())
+
+	$ss = $this->getRemoteStatus(true);
+	$ws = $this->getWebDavStatus(true);
+
+
+		$this->doWriteLog("Checking Internpt Service Manager Online: ".$ss);
+		$this->doWriteLog("Checking WebDav Service Status Online: ".$ws);
+		if(false === boolval($this->doMountCheck())) { 
+		$this->doWriteLog("Checking WebDav Mount Status - Not Mounted");
+		$this->doWriteLog("Executing Restart");
+			$this->doRestart();
+		return;
+	       	}
+
+		info("Checking Internpt Service Manager Online: ".$ss);
+	if($ss == 1) {
+
+		if($ws == 0)
 		{
-			 $this->doWriteLog("Webdav Server offline while Internpt Service is running. Restarting WebDav");
-			 $this->startWebDav();
+		    info("webdav service not running ".$ws);
+			 $this->doWriteLog("Webdav Server offline while Internpt Service is running. Restarting all Services");
+			$this->doRestart();
 		}
+        else{
+		     info("webdav service is running ".$ws);
+			 $this->doWriteLog("Webdav Server online while Internpt Service is running. No further action");
+             return;
+        }
+
 	}else{
-	//	$this->doWriteLog("Internpt Service Manager NOT running");
+		info("Internpt Service Stopped - no further action");
+		$this->doWriteLog("Internpt Service Manager NOT running - No further action");
 	}
+        return;
 }
 
 
@@ -443,7 +547,7 @@ public function doCreateLogs(){
 			if(!is_file($this->credentials['internpt_log']))
 			{
 			       	exec('/usr/bin/touch '.$this->credentials['internpt_log'],$output,$result);
-		       		success('Created Internpt Manager Log ✓'.implode($output).' r'.$result);
+				success('Created Internpt Manager Log ✓');
 			}
 
 
@@ -465,22 +569,22 @@ public function doDeleteLog(){
 */
 
 
+		info("Internpt Manager Log Deletion Requested");
 		fclose($this->loghandle);
 		exec('rm -f '.$this->credentials['internpt_log']);
-		info("Internpt Manager log for ".$this->credentials['username']." deleted");
+		finaltext("Internpt Manager log for ".$this->credentials['username']." deleted ✓");
 }
 
 public function doStop() {
 /*
  *	Stop internpt-manager processes
 */
-
 		$this->doWriteLog("Internpt Manager Stop Requested");
-		info("Stopping Internpt Service Manager...");
+		info("Internpt Manager Stop Requested");
 		$this->stopService();
 		$this->doUnmount();
 		$this->stopWebDav();
-		finaltext("The Internpt Service Manager has stopped");
+                finaltext('Internpt Service stopped ✓');
 }
 
 public function doUninstall() {
@@ -498,7 +602,7 @@ public function doUninstall() {
 		$this->doDaemonReload();
 		$this->doDeleteLog();
 		finaltext("Internpt Service Manager Files removed");
-		info("Delete the file internpt-manager to complete the uninstall");
+		info("Delete the internpt-manager file (".__FILE__.") to finalise the uninstall process");
 }
 
 
@@ -509,7 +613,7 @@ public function doLogin() {
 */
 
 
-		$exec = "/usr/local/bin/internxt login -x -e ".$this->internxt_email." -p '".$this->internxt_password."' ".R;
+		$exec = "/usr/bin/internxt login -x -e ".$this->internxt_email." -p '".$this->internxt_password."' ".R;
 		exec($exec,$output,$result);
 		
 			if(str_contains(implode($output),'Succesfully logged in')) {
@@ -524,7 +628,7 @@ public function doLogin() {
 
                         $this->doWriteLog("Failed to log into Internxt Account");
 
-		$exec = "/usr/local/bin/internxt login -x -e ".$this->internxt_email." -p '".$this->internxt_password."' ".R;
+		$exec = "/usr/bin/internxt login -x -e ".$this->internxt_email." -p '".$this->internxt_password."' ".R;
 		exec($exec,$output,$result);
 		
 				if(str_contains(implode($output),'Succesfully logged in')) {
@@ -548,23 +652,31 @@ public function doLogin() {
 } // end doLogin
 
 
+/*******************************
+ *   Start WebDav Functions
+ *******************************/
+
 public function startWebDav() {
 /*** 
  * Enable  WebDav via Internxt CLI 
  * ***/
 
-$exec = "/usr/local/bin/internxt webdav enable ".R;
+$exec = "/usr/bin/internxt webdav enable ".R;
 exec($exec,$output,$result);
         /*** Attempt Start of WebDav ***/
+
+	$this->doWriteLog("WebDav Check ".implode($output));
 
                 if(str_contains(implode($output),'online'))
                 {
 
                         $this->doWriteLog("WebDav successfully enabled");
-                        success("WebDav Service enabled ✓");
+                    if($this->action <> 'check')    success("WebDav Service enabled ✓");
+			$this->createWebDavStatusFile(1);
 		}else{
 			/*** Enabling WebDav Failed ***/
                         $this->doWriteLog("WebDav Not enabled");
+			$this->createWebDavStatusFile(0);
 
                         error('Oh dear! Unable to enable WebDav');
                 die();
@@ -581,7 +693,7 @@ public function stopWebDav() {
  * ***/
 
 
-$exec = "/usr/local/bin/internxt webdav disable ".R;
+$exec = "/usr/bin/internxt webdav disable ".R;
 exec($exec,$output,$result);
         /*** Attempt Stop of WebDav Service ***/
 		if(intval($result) == 0)
@@ -589,6 +701,7 @@ exec($exec,$output,$result);
 
                         $this->doWriteLog("WebDav successfully disabled");
                         success('Webdav Service stopped ✓');
+			$this->createWebDavStatusFile(0);
 		}else{
 			/*** Stopped WebDav Failed ***/
 
@@ -600,34 +713,124 @@ exec($exec,$output,$result);
 } // end stopWebdav
 
 
-public function getWebDavStatus() { 
+public function getWebDavStatus($integeronly = false) { 
 /*** 
  * Get  WebDav Status 
- * @return string
+ *
+ * if integeronly:
+ * 0 - offline
+ * 1 - online
+ * -1 - unavailable
+ *
+ * else
+ *
+ * textual results
+ * @return int
  * ***/
 
-	$exec = "/usr/local/bin/internxt webdav status ".R;
+	$exec = "/usr/bin/internxt webdav status ".R;
 
 	exec($exec,$output,$result);
 	if($result == 0)
 	{
 		if(str_contains(implode($output),"status: online"))
 		{
-			return true;
+			$r = 1;
+			$this->createWebDavStatusFile(1);
                         $this->doWriteLog("Webdav Status: Online");
 		}else{
                         $this->doWriteLog('Webdav Status: Offline');
-			return false;
+			$this->createWebDavStatusFile(0);
+			$r = 0;
 		}
 	}else{
-		echo "-1";
+		$r = -1;
                         $this->doWriteLog('Webdav Status: Unavailable'.implode($output));
+			$this->createWebDavStatusFile(-1);
 	}
+
+// return 
+	if($integeronly){
+	       	echo $r;
+       		return $r;
+	}
+	else
+	{
+
+		if($r == -1){
+			error('WebDav Service is unavalable');
+		}elseif($r == 1){
+			finaltext('WebDav Service is Active');
+		}elseif($r == 0){
+			error('WebDav Service is Offline');
+		}
+	}
+
 }
 
 
+public function createWebDavStatusFile($status) {
+	/* create / update webdav_status file
+	 * webdav_status file is made available for such things as Waybar to read
+	 * @parameter status
+	 * 1 - active
+	 * 2 - stopped 
+	 * -1 - unavailable 
+	 * @return void
+	 * */
+
+	if(!is_dir($this->status_directory)) $this->createStatusDirectory();
+	
+	$wb = fopen($this->status_directory.'/webdav_status','w+'); // open status file - usable by external scripts
+			fwrite($wb,$status);
+			fclose($wb);
+		exec('/usr/bin/chown '.$this->uid.':'.$this->guid.' '.$this->status_directory);
+		exec("/usr/bin/chmod -Rf 700 ".$this->status_directory);
+
+			return;
+}
+	
 
 
+/*******************************
+ *   End WebDav Functions
+ *******************************/
+
+public function doClearCache() {
+/** 
+ * Cleans the vfs-cache in Rclone
+ *
+ * Usage: called before doMount
+ *
+ * This is particularly useful when uploads get stuck in the cache.
+ * For example, Internxt doesnt play nice files/folders beginning with '.'
+ * These files/folders can remain in the cache and clog everything up
+ * Question: should this be optional? Or, part of a credentials.json?
+ * 
+ **/	 
+$folder = rtrim($this->rclone_remote,':');
+$exec = '/usr/bin/rm -Rf /tmp/rclone/vfs/vfs/'.$folder;
+exec($exec);
+$this->doWriteLog($exec);
+}
+
+
+public function doResetFolder() {
+/** 
+ * Removes and deletes the Internpt folder 
+ * Recreates the Internpt folder
+ *
+ *
+ **/	 
+    $folder = $this->mountpoint;
+$exec = '/usr/bin/chattr -i '.$this->mountpoint;
+$exec .= '&& /usr/bin/rm -Rf '.$this->mountpoint;
+$exec .= '&& /usr/bin/mkdir '.$this->mountpoint;
+$exec .= '&& /usr/bin/chmod -Rf 0770 '.$this->mountpoint;
+$exec .= '&& /usr/bin/chown -Rf '.$this->uid.':'.$this->guid.' '.$this->mountpoint;
+exec($exec);
+$this->doWriteLog('Reset Folder Called: '.$exec);
+}
 
 
 
@@ -646,8 +849,8 @@ After=network-online.target
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/rclone mount --config=".$this->rclone_config." --timeout 5h --allow-other --allow-non-empty --no-check-certificate --buffer-size 1G --cache-tmp-upload-path=/tmp/rclone/upload --cache-chunk-path=/tmp/rclone/chunks --cache-workers=16 --cache-writes --vfs-cache-mode full --cache-dir=/tmp/rclone/vfs --cache-db-path=/tmp/rclone/db --no-modtime --drive-use-trash --stats=0 --log-file ".$this->rclone_log." --log-level INFO --checkers=16 --bwlimit=180M --rc-addr=localhost:5575 --gid ".$this->guid." --uid ".$this->uid." --dir-cache-time=10s --poll-interval=10s --cache-info-age=60m --rc ".$this->rclone_remote.":/ ".$this->mountpoint."
-ExecStop=/usr/bin/fusermount -uz ".$this->mountpoint."
+ExecStart=/usr/bin/rclone mount --config=".$this->rclone_config." --timeout 5h --allow-other --allow-non-empty --no-check-certificate --buffer-size 1G --cache-tmp-upload-path=/tmp/rclone/upload --cache-chunk-path=/tmp/rclone/chunks --cache-workers=16 --cache-writes --vfs-cache-mode full --vfs-cache-max-size=90G --cache-dir=/tmp/rclone/vfs --vfs-read-chunk-size-limit 500M  --vfs-read-chunk-size 64M --cache-db-path=/tmp/rclone/db --no-modtime --drive-use-trash --stats=0 --log-file ".$this->rclone_log." --log-level INFO --checkers=16 --bwlimit=180M --rc-addr=localhost:5575 --gid ".$this->guid." --uid ".$this->uid." --dir-cache-time=72h --cache-info-age=60m --rc ".$this->rclone_remote.":/ ".$this->mountpoint."
+ExecStop=/usr/bin/fusermount -u -z ".$this->mountpoint."
 Restart=on-failure
 [Install]
 WantedBy=default.target";
@@ -736,38 +939,58 @@ exec($exec,$eo,$er);
 		}
 
 			success("Disabled Internpt Service Manager File ✓");
+		$this->createStatusFile(3);
 
 	} // end disableServiceFile
 
 
 
 	
-public function doStatus() {
+public function getStatus() {
 /*** 
  * get Systemd Service status
+ *
+ * 0 - inactive
+ * 1 - active
+ * 2 - stopped
+ * 3 - unavailable
+ * @returns void
  * ***/
 
 
 	$exec = "/usr/bin/systemctl status ".$this->service_file.R;
 	exec($exec,$output,$result);
 	if(str_contains(implode($output),'internpt-manager.service not found')){
-		finaltext('Status: Service is NOT active because it is NOT installed');
+		finaltext('Internpt Service is NOT active because it is NOT installed');
 		info('Execute internpt-manager install to activate');
+		$this->createStatusFile(0);
+	}elseif(str_contains(implode($output),'Active: failed')){
+		finaltext('Internpt Service is Status is Failed');
+		info('Try to start the Internpt Service');
+		$this->createStatusFile(0);
 	}elseif(str_contains(implode($output),'Active: active (running)')){
-		finaltext('Status: Service is active');
+		finaltext('Internpt Service is Active');
+		$this->createStatusFile(1);
 	}elseif( str_contains(implode($output),'(code=exited, status=143)')){
-		finaltext('Status: Service is stopped');
+		finaltext('Internpt Service is Stopped');
+		$this->createStatusFile(2);
 	} else{
-		finaltext('Status: Service Status unavailable');
+		finaltext('Internpt Service Status is Unavailable');
 		info('Has the Internpt Manager been intialised?');
+		$this->createStatusFile(3);
 	}
 
-} // end of doStatus
+	$this->getWebDavStatus();
+
+	$this->doMountCheck();
+
+
+} // end of getStatus
 
 
 
 	
-public function getRemoteStatus() {
+public function getRemoteStatus($echoresult = false) {
 /*** 
  * get Systemd Service status
  * @return int
@@ -783,19 +1006,53 @@ $exec = "/usr/bin/systemctl status ".$this->service_file.R;
 	if(str_contains(implode($output),'internpt-manager.service not found')){
 		// inactive
 		$r = 0;
+		$this->createStatusFile(0);
 	}elseif(str_contains(implode($output),'Active: active (running)')){
 		// active
 		$r = 1;
+		$this->createStatusFile(1);
 	}elseif( str_contains(implode($output),'(code=exited, status=143)')){
 		// stopped
 		$r = 2;
+		$this->createStatusFile(2);
 	} else{
 		// unavailable
 		$r = 3;
+		$this->createStatusFile(3);
 	}
-	echo $r;
+	if($echoresult) echo $r;
+	return $r;
 
-} // end of doStatus
+} // end of getRemoteStatus
+
+
+public function createStatusFile($status) {
+	/* create / update service status file
+	 * service_status file is made available for such things as Waybar to read
+	 * @parameter status
+	 * 1 - active
+	 * 2 - stopped 
+	 * -1 - unavailable 
+	 * @return void
+	 * */
+
+	if(!is_dir($this->status_directory)) $this->createStatusDirectory();
+	
+
+	$wb = fopen($this->status_directory.'/service_status','w+'); // open status file - usable by external scripts
+
+			fwrite($wb,$status);
+			fclose($wb);
+		exec('/usr/bin/chown -Rf '.$this->uid.':'.$this->guid.' '.$this->status_directory);
+		exec("/usr/bin/chmod -Rf 700 ".$this->status_directory);
+
+			return;
+}
+	
+
+
+
+
 
 
 public function startService() {
@@ -813,37 +1070,26 @@ exec($exec,$output,$result);
 			$this->doWriteLog("Unable to start ".$this->service_file);
 			error("Oh dear! Unable to start Internpt Service Manager file");
 			error("Internxt Drive NOT enabled");
+		$this->createStatusFile(0);
 			die();
 		}else{
 			$this->doWriteLog("Internpt Service Manager File");
 
-			$exec= "/usr/bin/cat /proc/mounts | grep ".$this->mountpoint." | wc -l"; 
+			info("Attempting to mount Internxt Drive...");
 
-			while( exec($exec,$mo,$mr) ) {
-				if(implode($mo) == 1) break;
-				info(chr(8).".");
-				sleep(1);
-			}
-			$this->doWriteLog("Internxt Drive has Mounted");
+            if(boolval($this->doMountCheck()))
+            {
+			    $this->doWriteLog("Internxt Drive has Started Successfully");
+		    	finaltext("Internxt Drive has started and is ready to be used ✓");
+		        $this->createStatusFile(1);
+            
+            }else{
 
+			    error("Unable to Mount Internxt Drive");
+			    $this->doWriteLog("Internxt Drive NOT mounted");
+		        $this->createStatusFile(0);
+            }
 
-
-				
-			//$index = 0;
-			//$animation = array('⢿', '⣻','⣽','⣾','⣷','⣯','⣟⡿');
-			info("Mounting Internxt Drive...");
-				
-			$exec = "ls -1 ".$this->mountpoint." | wc -l; echo ".R;
-
-			//while( $dir = scandir($this->mountpoint)) {
-			while(exec($exec,$output,$result)) {
-				if(count(implode($output))>0) break;
-				info("\r.");
-			}
-			success("Mounted Internxt Drive ✓");
-
-			$this->doWriteLog("Internxt Drive has Started Successfully");
-			finaltext("Internxt Drive has started and is ready to be used ✓");
 		}
 
 } // end startService
@@ -865,6 +1111,7 @@ exec($exec,$output,$result);
 			die();
 		}else{
 			$this->doWriteLog("Stopped Internpt Service Manager ");
+			$this->createStatusFile(0);
 
 
 			success("Internpt Service Manager has been sucessfully stopped ✓");
@@ -879,34 +1126,41 @@ public function doUnmount() {
  * Unmount mount point
  * ***/
 
-		exec('/usr/bin/umount -f '.$this->mountpoint.R,$output,$result);
+	$exec='/usr/bin/umount -l '.$this->mountpoint.R;
+		exec($exec,$output,$result);
+		sleep(3);
 		if($result == 0) {
 			$this->doWriteLog("Successfully Unmouted Drive");
 
 		}else{
-			$this->doWriteLog("Unable to Unmout Drive - Error Code: ".$result. ' output: '.implode($output));
-
+			$this->doWriteLog("Unable to Unmount Drive - Error Code: ".$result. ' output: '.implode($output));
 
 					if(str_contains(implode($output), 'target is busy')) {
 
 						info("The mount point is busy.");
-					        info("Close all files/applications/terminals using the directory '".$this->mountpoint."' and call this command again.");
+					        info("Close all files/applications/terminals using the directory '".$this->mountpoint);
+					        finaltext("File managers are particularly prone to causing this error as they seek to access the mounted drive. Make sure you close Nautilus/Thunar/PCManFM, etc and then call this command again.");
 
 					} elseif(str_contains(implode($output), 'not mounted')){
 
 						if($this->action != 'install')
-						       	info("The mount point is not mounted, and so cannot be unmounted. No further action needed. ✓");
+						       	info("Point of Information: The mount point is not mounted, and so cannot be unmounted. No further action needed. ✓");
 						return;
 
+					} elseif(str_contains(implode($output), 'transport endpoint not connected')){
+						       	info("Transport End Point Not connected as of yet");
 					}
 
 		}
 
-		if($this->action == 'uninstall' || $this->action == 'stop') { 
-			finaltext(ucfirst($this->action)." request NOT completed");
-			die();
-		}
-                        	error("Oh dear! Unable to unmount Internxt Drive from ".$this->mountpoint);
+		//if($this->action == 'uninstall' || $this->action == 'stop') { 
+		//	finaltext(ucfirst($this->action)." request NOT completed");
+	//		die();
+	//	}
+		if(
+			$this->action <> 'restart' 
+			&& $this->action <> 'install' 
+		)	error("Oh dear! Unable to unmount Internxt Drive from ".$this->mountpoint);
 
 			
 
@@ -959,7 +1213,8 @@ public static function doHelp() {
  * Print Help
  * ***/
 
-printstars();
+
+info(InternxtConnection::printstars());
 info("This script is an unofficial Internxt Drive Service Manager 
 
 It is to be actioned by root only.
@@ -1037,7 +1292,7 @@ The 'help' process prints this information.
 
 Requirements: 
 
-(1) PHP version >= 8 must be installed
+(1) PHP version >= 5.6 must be installed
 (2) Rclone must be installed. For best results, choose the most recent version available.
 (3) As root, follow the instructions here (https://help.internxt.com/en/articles/9720556-how-to-install-the-internxt-cli) to download the Internxt CLI
 (4) As root, create a rclone WebDav remote following the instructions here ()
@@ -1045,7 +1300,7 @@ Requirements:
 (6) As root, in the file /etc/fuse.conf, remove the # symbol at the beginning of the line containing 'allow_use_other' 
 (7) As root, create the file /root/.internpt/credentials.json. Enter the key information - execute   ".__FILE__." credentials   for more information
 ");
-printstars();
+info(InternxtConnection::printstars());
 }// end doHelp
 
 
@@ -1055,7 +1310,7 @@ public static function doCredentials(){
  * ***/
 
 
-	printstars();
+	info(InternxtConnection::printstars());
 	info('The credentials file contains all the information that this script needs to initialise and manage your Internxt Drive connection.
 
 It should be created here:
@@ -1069,6 +1324,7 @@ The format it should use is as follows (use your own values as appropriate):
         "uid":"1000",
         "gid":"1000",
         "mountpoint":"/home/jess/Internxt",
+        "status_directory":"/home/jess/.internpt",
         "internxt_email":"jess@example.com",
         "internxt_password":"my excellent password by jess"
         "internpt_log":"/var/log/internpt-manager/jess-combined.log"
@@ -1082,16 +1338,76 @@ Where:
  uid - the user ID used for the mount point directory and its associated contents (for example, Jess\' UID in /etc/passwd is 1000)
  gid - the group Id used for the mount point directory and its associated contents (for example, Jess\' GID in /etc/group is 1000)
  mountpoint - the place where the Internxt Drive files are to be mounted. To avoid conflicting with the official Internxt apps do NOT use "~/Internxt Drive".
+ status_directory - the directory in which the Internpt Manager Service will create status files (useful for Waybar, etc)
  internxt_email - the email address associated with your Internxt Account
  internxt_password - the password associated with your Internxt Account
  internpt_log - the directory and log file to be used where messages from the '.__FILE__.' script are to be recorded - NOTE: best practice would suggest a per user log file 
  rclone_remote - the name of the rclone remote connecting to the Internxt WebDav Server 
  rclone_log - the directory and log file to be used where messages from rclone for the above remote are to be recorded - NOTE: best practice would suggest a per user log file 
  rclone_config - the rclone directory and config file setting out the details of the remote ');
-printstars();
+	info(InternxtConnection::printstars());
 
 
 } // end doCredentials
+
+public static function getTty() {
+	/* discover the tty number for this process 
+	 * @return /dev/pts/[int] | null
+		* */
+$exec = '/usr/bin/tty';
+	exec($exec,$output,$result_code);
+		if($result_code == 0)
+		{
+			return implode($output);
+		}else{
+			return null;
+		}
+}
+
+
+
+
+public static function printstars() { 
+	/** print stars onto terminal - for the width of the terminal
+	 * @return a line of *
+		* **/
+$tty = InternxtConnection::getTty();
+
+
+if(str_contains(strval($tty),'pts')) {
+// find from previous version
+		// work out the width of the output
+		$exec = 'echo $(stty -a < "'.$tty.'" | grep -Po ';
+		$exec .= "'(?<=columns )\d+')";
+	
+
+	exec($exec,$output,$result_code);
+	if($result_code == 0)
+	{
+		$width = implode($output);
+		$width--;
+
+		$stars = '';
+			for($x = 0; $x < $width; $x++){
+				$stars .= STAR;
+			}
+		echo PHP_EOL.$stars.PHP_EOL;
+	}
+
+}
+else
+{
+	// unable to discern width of terminal and print stars
+	// print default 
+	echo "++++++";
+}
+
+} // end print stars
+
+
+
+
+
 
 
 
